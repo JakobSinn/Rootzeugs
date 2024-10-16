@@ -1,0 +1,6 @@
+void graph(){
+  float x[10] = {1,2,3,4,5,10,12,14,18,25};
+  float y[10] = {4,5,2,3,5,8,19,6,3,4};
+  TGraph* test = new TGraph(10,x,y);
+  test->Draw();
+}

@@ -1,0 +1,237 @@
+#include <list>
+void Ptcl_Register(int id, int flag, double px, double py, double pz, double x, double y, double z, double t);
+void Hillas_Split(int id, double E, double theta, double phi, double x, double y, double z, double t);
+void E_split_N(double in, double branch[]);
+void E_split_two(double E_in, double &E_A, double &E_B, double minimum);
+void Get_Int_Position(int id, double theta, double phi, double h0, double&x_int, double &y_int, double &z_int);
+double Get_H_from_X(double X, double h0, double theta);
+
+TRandom *r;
+double pi = TMath::Pi();
+
+double M_p = 0.938;
+double M_pi = 0.13977;
+double M_mu = 0.105658;
+double M_neu = 0;
+double M_e = 511e-06;
+
+const int iterations = 100000;
+
+int pdg_p=2212;
+int pdg_pi=211;
+int pdg_mu=13;
+int pdg_neutrino=14;
+
+double rho0=1.021/1000;
+double A = 8;
+const int n_branches = 4;
+
+struct Particle{
+  int id;
+  int flag;
+  double e;
+  double t;
+  double px;
+  double py;
+  double pz;
+  double x;
+  double y;
+  double z;
+};
+
+std::list<Particle> particle_bank;
+
+void datastruct(){
+  TNtuple *ntuple = new TNtuple("ntuple","ntuple","evt:id:flag:e:px:py:pz:x:y:z");
+  
+  r = new TRandom();
+
+  for (int ievt=0; ievt<iterations; ievt++){
+    if (ievt % 10000 == 0 && ievt > 0) printf("Simulating particle: %d\n", ievt);
+    int id_primary = pdg_p;
+    double e_primary = 1000;
+    double theta=acos(r->Rndm());
+    double phi=r->Rndm()*pi*2;
+
+    double h0=1.e10;
+    double t0=0;
+    double x_int, y_int, z_int;
+
+    particle_bank.clear();
+  //void Get_Int_Position(int id, double theta, double phi, double h0, double&x_int, double &y_int, double &z_int);
+
+
+    Get_Int_Position(id_primary, theta, phi, h0, x_int, y_int, z_int);
+    //printf("Printing data from event no %d as recieved by main function, x, y, z\n",ievt);
+    //printf("%f %f %f\n", x_int, y_int, z_int);
+    Hillas_Split(id_primary, e_primary, theta, phi, x_int, y_int, z_int, t0);
+
+    for (std::list<Particle>::iterator it = particle_bank.begin(); it != (particle_bank.end()); ++it){
+      int id = it->id;
+	int flag = it->flag;
+	double e= it->e;
+	double px =it->px;
+	double py =	   it->py;
+	double pz =	   it->pz;
+	double x =	   it->x;
+	double y =	   it->y;
+	double z =	   it->z;
+       
+      ntuple->Fill(
+		   ievt,
+		   id,
+		   flag,
+		   e,
+		   px,
+		   py,
+		   pz,
+		   x,
+		   y,
+		   z
+		   );
+    }
+  }
+  ntuple->Draw("z","id==211");
+}
+
+void Ptcl_Register(int id, int flag, double px, double py, double pz, double x, double y, double z, double t){
+  double mass = 0;
+
+  if (id==pdg_pi) mass = M_pi;
+  if (id==pdg_p) mass = M_p;
+
+  Particle particle_tmp;
+  particle_tmp.id = id;
+  particle_tmp.flag = flag;
+  particle_tmp.e = sqrt(px*px + py*py + pz*pz + mass*mass);
+  particle_tmp.t = t;
+  particle_tmp.px = px;
+  particle_tmp.py = py;
+  particle_tmp.pz = pz;
+  particle_tmp.x = x;
+  particle_tmp.y = y;
+  particle_tmp.z = z;
+
+  particle_bank.push_back(particle_tmp);
+}
+
+void Hillas_Split(int id, double E, double theta, double phi, double x, double y, double z, double t){
+  double E_A=0;
+  double E_B=0;
+
+  double mass;
+  if (id==pdg_pi) mass = M_pi;
+  else mass = M_p;
+
+  while (E_A < mass) {
+    E_split_two(E, E_A, E_B, mass);
+  }
+
+  double p = sqrt(E_A*E_A - mass*mass);
+  double px = -p*sin(theta)*cos(phi);
+  double py = -p*sin(theta)*sin(phi);
+  double pz = -p*cos(theta);
+
+  Ptcl_Register(id, 1, px, py, pz, x, y, z, t);
+
+  double E_branch[n_branches];
+  E_split_N(E_B, E_branch);
+
+  for (int j=0; j<n_branches; j++){
+    double E_in=E_branch[j];
+    double E_a, E_b;
+    while (E_in > M_pi){
+      E_split_two(E_in, E_a, E_b, M_pi);
+      double E_kine_pi = E_a;
+
+      E_in = E_b - M_pi;
+      double E_pi = E_kine_pi + M_pi;
+      double p_pi = sqrt(E_pi*E_pi - M_pi*E_pi);
+      double px_pi = -p_pi*sin(theta)*cos(phi);
+      double py_pi = -p_pi*sin(theta)*sin(phi);
+      double pz_pi = -p_pi*cos(theta);
+
+      Ptcl_Register(pdg_pi, 1, px_pi, py_pi,pz_pi,x,y,z,t);
+    }
+  }
+}
+
+void E_split_N(double in, double branch[]){  
+
+  //printf("Splitbyn betreten!\n");
+
+  const int piecenum = n_branches;
+  const int minimum = 0;
+    
+  const int nrandom = piecenum - 1;
+  double randnum[nrandom];
+
+  //Zufallszahlnen generieren
+  for (int i=0; i<nrandom; i++){
+    randnum[i] = r->Rndm();
+    //printf("Zufallszahl %f",randnum[i]);
+  }
+
+  //Sortieren
+  for (int i=0; i<nrandom-1; i++){
+    for (int j=i; j<nrandom; j++){
+      if (randnum[i] > randnum[j]){
+	double temp = randnum[i];
+	randnum[i]=randnum[j];
+	randnum[j] = temp;
+      }
+    }
+  }
+  //printf("New Simulation:\n");
+  for (int i=0; i<nrandom; i++){
+    //printf("Zufallszahl %d ist %f\n", i, randnum[i]);
+  }
+
+  
+  double budget = in - piecenum*minimum;
+  branch[0] = randnum[0]*budget+minimum;
+  for (int i=1; i<piecenum-1; i++){
+    branch[i]=(randnum[i]-randnum[i-1])*budget+minimum;
+  }
+  branch[piecenum-1] = (1-randnum[nrandom-1])*budget+minimum;
+  for (int i=0; i<piecenum; i++){
+    //printf("Stück %d ist %f\n", i, branch[i]);
+  }
+}
+
+void E_split_two(double E_in, double &E_A, double &E_B, double minimum){
+  double frac = r->Rndm();
+  E_A = frac*(E_in-2*minimum)+minimum;
+  E_B = E_in - E_A;
+}
+
+void Get_Int_Position(int id, double theta, double phi, double h0, double &x_int, double &y_int, double &z_int){
+  double lambda = 87;
+  if (id==pdg_pi) lambda = 116;
+  double X = r->Exp(lambda);
+
+  z_int=Get_H_from_X(X,h0,theta);
+  double radius = z_int * tan(theta);
+  x_int = radius*cos(phi);
+  y_int = radius*sin(phi);
+  //printf("Get_Int_Position called!\n");
+  //printf("x y z X theta phi\n");
+  //printf("%f %f %f %f %f %f\n", x_int, y_int, z_int, X, theta, phi);
+}
+
+double Get_H_from_X(double X, double h0, double theta){
+  double costheta = fabs(cos(theta));
+  double h;
+
+  if (costheta!=0){
+    h=-log(X*costheta/(rho0*A*100000)+exp(-h0/(A)))*A;
+  } else h=h0;
+
+  return h;
+}
+  
+
+//eduroam
+
+    
+  

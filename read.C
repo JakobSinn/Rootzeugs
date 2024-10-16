@@ -1,0 +1,8 @@
+void read(){
+
+  TFile *f0 = TFile::Open("beispieltuple.root");
+  TNtuple *ntuple2 = 0;
+  f0->GetObject("ntuple", ntuple2);
+  ntuple2->Draw("y:x", "!(x>0 && y>0)");
+
+}

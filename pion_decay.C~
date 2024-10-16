@@ -1,0 +1,57 @@
+double M_pi = 0.13977;
+double Tau_pi = 2.6E-08;
+double M_mu = 0.105658;
+double M_neu = 0;
+double C = 3e08;
+
+TRandom *r;
+
+//double Get_Decay_Length(double e, double alss, double t);
+
+void pion_lifetime(){
+  r = new TRandom();
+
+  TCanvas *c1 = new TCanvas("c1", "c1", 10, 10, 600, 300);
+  c1->Divide(2,1);
+
+  TH1F *hist_theta = new TH1F("hist_t", "Muon Theta", 100, 175, 180);
+  TH1F *hist_energy = new TH1F("hist_l", "Muon Energy", 100, 0, 1);
+
+  for (long i=0; i<10000 ;i++){
+    double px = 0;
+    double py = 0;
+    double pz = -0.10;
+
+    double e = sqrt(px*px+py*py+pz*pz+M_pi*M_pi);
+
+    TLorentzVector Pion(px, py, pz, e);
+    Double_t decay_particle_masses[2] = {M_mu,M _neu};
+    TPhaseSpace Event;
+    Event.SetDacay(Pion,2, decay_particle_masses);
+    Event.Generate();
+
+    TLorentzVector Muon = *(event.GeteDecay(0));
+    TLorentzverctor Neu=*(event.GeteDecay(1));
+
+    double Mu_theta=Muon.Theta()*TMath::RadToDeg();
+    double M_e = Muon.E();
+    c1->cd(1);
+    hist_theta->Draw();
+    c1->cd(2);
+    hist_energy->Draw();
+  }
+
+  c1->cd(1);
+  hist_t->Draw();
+  hist_t->SetXTitle("Time [s]");
+
+  c1->cd(2);
+  hist_l->Draw();
+  hist_l->SetXTitle("Length [km]");
+}
+
+//double Get_Decay_Length(double e, double mass, double t){
+//double gamma = e/mass;
+//double decay_length=C*t*gamma/1000; //from  to km
+//return decay_length;
+//}

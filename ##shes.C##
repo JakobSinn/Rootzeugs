@@ -1,0 +1,7 @@
+TRandom *r;
+const int n_branches = 4;
+double M_p = 0.938;
+double M_pi = 0.13977;
+void E_split_N(double E_in, double E_Branche[], double M_min){
+
+  

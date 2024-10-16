@@ -1,0 +1,15 @@
+int summe(int limit);
+
+void sum_100(){
+  int limit;
+  limit = scanf("Enter limit: ", int);
+  printf("summation from 1 to %d yields %d \n",limit,summe(limit));
+}
+
+int summe(int limit){
+  int sum = 0;
+  for (i = 1; i <= limit; i++){
+    sum += i;
+  }
+  return sum;
+}

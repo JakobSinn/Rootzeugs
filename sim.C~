@@ -1,0 +1,35 @@
+TRandom* r = new TRandom(); 
+    
+r -> SetSeed(23434);
+float rho0 = 1.021/1000;
+float lambda_proton = 87;
+float starth = 100000;
+float p_stop = 0;
+float d_h = 1;
+
+float rho(float h){
+   return rho0 * exp(-h/8);
+}
+
+float howfar(){
+  int ih = 0;
+  float p_stop = 0;
+  float h = starth;
+  while (r->Rndm() > p_stop){
+     ih++;
+     h = starth - d_h * ih;
+     float dX = rho(h) * d_h * 100000;
+     p_stop = 1./lambda_proton*dX;
+  }
+  return h;
+}
+
+void sim(){
+  //TCanvas* c_bricks = new TCanvas("Neutrino Propagaton Simulation");
+    TH1D* hist = new TH1D("neutrinos", "Neutrino Propagation Simulation", 100, 0, 100);
+    for (int i = 0; i < 10000; i++){
+      hist->Fill(howfar());
+    }
+    hist->Fit("landau");
+    hist->Draw();
+}

@@ -1,0 +1,73 @@
+void splitbyn(double in, double branch[], double minimum, int piecenum);
+
+TRandom* r;
+
+void pizzasim(){
+    r = new TRandom();
+    r -> SetSeed(23434);
+    TCanvas* pizza = new TCanvas("angle");
+    TH1F* hist = new TH1F("Masse", "Pizza mass distribution with four pieces", 100, 0, 1);
+
+    const int piecenum = 4;
+    
+    const float pizzamass = 1.;
+    const float pizzaminweight = 0.05;
+
+
+    for (int i=0; i<300000; i++){
+      if (i % 10000 == 0)
+      printf("Simulation %d wird angefangen\n ",i);
+
+      double pieces[piecenum];
+      if (pizzamass>pizzaminweight*piecenum){
+	splitbyn(pizzamass,pieces,pizzaminweight, piecenum);
+      }
+      for (int j=0; j<piecenum; j++){
+	hist->Fill(pieces[j]);
+      }
+    }
+    
+    hist -> SetXTitle("Share of Pizza");
+    hist -> Draw();
+    pizza -> Draw();
+}
+
+void splitbyn(double in, double branch[], double minimum, int piecenum){  
+
+  //printf("Splitbyn betreten!\n");
+    
+  const int nrandom = piecenum - 1;
+  double randnum[nrandom];
+
+  //Zufallszahlnen generieren
+  for (int i=0; i<nrandom; i++){
+    randnum[i] = r->Rndm();
+    //printf("Zufallszahl %f",randnum[i]);
+  }
+
+  //Sortieren
+  for (int i=0; i<nrandom-1; i++){
+    for (int j=i; j<nrandom; j++){
+      if (randnum[i] > randnum[j]){
+	double temp = randnum[i];
+	randnum[i]=randnum[j];
+	randnum[j] = temp;
+      }
+    }
+  }
+  //printf("New Simulation:\n");
+  for (int i=0; i<nrandom; i++){
+    //printf("Zufallszahl %d ist %f\n", i, randnum[i]);
+  }
+
+  
+  double budget = in - piecenum*minimum;
+  branch[0] = randnum[0]*budget+minimum;
+  for (int i=1; i<piecenum-1; i++){
+    branch[i]=(randnum[i]-randnum[i-1])*budget+minimum;
+  }
+  branch[piecenum-1] = (1-randnum[nrandom-1])*budget+minimum;
+  for (int i=0; i<piecenum; i++){
+    //printf("Stück %d ist %f\n", i, branch[i]);
+  }
+}
