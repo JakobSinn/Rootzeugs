@@ -5,7 +5,7 @@ void E_split_N(double in, double branch[]);
 void E_split_two(double E_in, double &E_A, double &E_B, double minimum);
 void Get_Int_Position(int id, double theta, double phi, double h0, double&x_int, double &y_int, double &z_int);
 double Get_H_from_X(double X, double h0, double theta);
-
+void Make_CR_Shower(int id_primary, double e_rpimary, double theta, double phi);
 double Get_Decay_Length(double e, double mass, double t);
 void Pion_Decay(double px, double py, double pz, double x, double y, double z, double t);
 
@@ -47,27 +47,8 @@ struct Particle{
 
 std::list<Particle> particle_bank;
 
-void shower_sim(){
-  TNtuple *ntuple = new TNtuple("ntuple","ntuple","evt:id:flag:e:px:py:pz:x:y:z");
-  
-  r = new TRandom();
-
-  double e_threshold_had_int = 10;
-
-  TCanvas *sky = new TCanvas("sky", "sky", 300, 10, 500, 800 );
-  TView *view = TView::CreateView(1,0,0);
-  view->ShowAxis();
-  view->SetRange(-5, -5, 0, 5, 5, 20);
-
-  for (int ievt=0; ievt<iterations; ievt++){
-    if (ievt % 100 == 0 && ievt > 0) printf("Simulating particle: %d\n", ievt);
-    int id_primary = pdg_p;
-    double e_primary = 1000;
-    double theta=0.2;
-    //double theta = 0;
-    double phi=r->Rndm()*pi*2;
-
-    double h0=1.e10;
+void Make_CR_Shower(int id_primary, double e_primary, double theta, double phi){
+  double h0=1.e10;
     double t0=0;
     double x_int, y_int, z_int;
 
@@ -126,6 +107,29 @@ void shower_sim(){
 	  }
 	}
     }
+}
+
+void shower_sim(){
+  TNtuple *ntuple = new TNtuple("ntuple","ntuple","evt:id:flag:e:px:py:pz:x:y:z");
+  
+  r = new TRandom();
+
+  double e_threshold_had_int = 10;
+
+  TCanvas *sky = new TCanvas("sky", "sky", 300, 10, 500, 800 );
+  TView *view = TView::CreateView(1,0,0);
+  view->ShowAxis();
+  view->SetRange(-5, -5, 0, 5, 5, 20);
+
+  for (int ievt=0; ievt<iterations; ievt++){
+    if (ievt % 100 == 0 && ievt > 0) printf("Simulating particle: %d\n", ievt);
+    int id_primary = pdg_p;
+    double e_primary = 1000;
+    double theta=0.2;
+    //double theta = 0;
+    double phi=r->Rndm()*pi*2;
+
+    Make_CR_Shower(id_primary, e_primary, theta, phi);
 	    
 
 	// if (id == pdg_pi && it->flag!=2){
