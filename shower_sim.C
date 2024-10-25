@@ -5,10 +5,16 @@ void E_split_N(double in, double branch[]);
 void E_split_two(double E_in, double &E_A, double &E_B, double minimum);
 void Get_Int_Position(int id, double theta, double phi, double h0, double&x_int, double &y_int, double &z_int);
 double Get_H_from_X(double X, double h0, double theta);
-void Make_CR_Shower(int id_primary, double e_rpimary, double theta, double phi);
+void Make_CR_Shower(int id_primary, double e_primary, double theta, double phi);
 double Get_Decay_Length(double e, double mass, double t);
 void Pion_Decay(double px, double py, double pz, double x, double y, double z, double t);
 void Get_Muon_Decay_Position(double e, double px, double py, double pz, double x, double y, double z, double &decay_x, double &decay_y, double &decay_z);
+
+double dxde_muon (double *x, double *par);
+double Get_Muon_Range(double e, int material_code);
+double dedx_muon(double *x, double *par);
+void Get_Muon_Stop_Position(double E, double px, double py, double pz, double x, double y, double z, double &stop_x, double &stop_y, double &stop_z);
+			    
 
 TRandom *r;
 double pi = TMath::Pi();
@@ -116,6 +122,7 @@ void shower_sim(){
 
   TH1F *hist_all = new TH1F("hist_all", "hist_all", 100, 0, 500);
   TH1F *hist_decay = new TH1F("hist_decay", "hist_decay", 100, 0, 500);
+  TH1F *hist_stop = new TH1F("hist_stop", "hist_stop", 100, 0, 500);
   TH1F *hist_arrival = new TH1F("hist_arrival", "hist_arrival", 100, 0, 500);
   
   r = new TRandom();
@@ -141,6 +148,7 @@ void shower_sim(){
     int n_mu_all = 0;
     int n_mu_decay = 0;
     int n_mu_arrival = 0;
+    int n_mu_stop = 0;
 	    
 
 	// if (id == pdg_pi && it->flag!=2){
@@ -199,10 +207,16 @@ void shower_sim(){
 
 	if (decay_z>det_z) it->flag = 3;
 
+	double stop_x, stop_y, stop_z;
+	Get_Muon_Stop_Position(e,px,py,pz,x,y,z,stop_x,stop_y,stop_z);
+
+	if(stop_z>det_z && stop_z>decay_z) it->flag = 4;
+
 	n_mu_all++;
 
 	if (it->flag==3) n_mu_decay++;
 	if (it->flag==1) n_mu_arrival++;
+	if (it->flag==4) n_mu_stop++;
       }
 
       // if (flag==1){
@@ -225,6 +239,7 @@ void shower_sim(){
       hist_all -> Fill(n_mu_all);
       hist_decay->Fill(n_mu_decay);
       hist_arrival->Fill(n_mu_arrival);
+      hist_stop->Fill(n_mu_stop);
   }
   }
   // ntuple -> SetLineColor(1);
@@ -253,6 +268,64 @@ void Get_Muon_Decay_Position(double e, double px, double py, double pz,
   decay_x = x + decay_length * px / p;
   decay_y = y + decay_length * py / p;
   decay_z = z + decay_length * pz / p;
+}
+
+void Get_Muon_Stop_Position(double e, double px, double py, double pz,double x, double y, double z,double &stop_x, double &stop_y, double &stop_z){
+  int material_code=0; // air
+  double Range = Get_Muon_Range(e, material_code);
+  double X = r->Exp(Range);
+  double h0=z;
+  double p=sqrt(px*px+py*py+pz*pz);
+  double theta=acos(-pz/p); //note the - sign, theta is in observer's frame;
+
+  stop_z=Get_H_from_X(X, h0, theta);
+
+  double dz=z-stop_z;
+  double dI=dz*tan(theta);
+
+  stop_x=x+dI*px/p;
+  stop_y=y+dI*py/p;
+}
+
+double Get_Muon_Range(double e, int material_code) {
+  TF1 *fr = new TF1 ("fr_air",dxde_muon,0.2,1000,1);
+  fr->SetNpx(1000);
+  fr->SetParameter(0,material_code);
+  if (e<=0.2) return 0; // ignore slow muons
+  double range=fr->Integral(0.2, e);
+  delete fr;
+  return range;
+}
+
+double dxde_muon(double *x, double *par){
+  double dedx= dedx_muon(x, par);
+  double dxde=1/dedx;
+  return dxde;
+}
+
+double dedx_muon(double *x, double *par) {
+  double E=x[0];
+  int material_code=par[0];
+
+  double K=0.307e-03; //GeV/g/cm2
+  double delta = 0; //for air and rock
+  double ZA=0.49919;   //for air
+  double I=85.7e-09;  //for air
+  
+  if (material_code==1){ 
+    I=136.4e-09;     //for rock, GeV
+    ZA=0.50;           //for rock
+  }
+
+  double z=1;
+  double p = sqrt(E*E-M_mu*M_mu);
+  double gamma = sqrt(1.+pow(p/M_mu,2));
+  double beta = sqrt(1.-1./(gamma*gamma));
+  double g_b = p/M_mu;
+  double tmax = 2*M_e*p*p/(M_mu*M_mu+M_e*M_e+2*M_e*E);
+  double dedx = K*z*z*ZA/(beta*beta)*(1/2.*log(2*M_e*g_b*g_b*tmax/(I*I))-beta*beta-delta/2.);
+
+  return dedx;
 }
 
 void Ptcl_Register(int id, int flag, double px, double py, double pz, double x, double y, double z, double t){
