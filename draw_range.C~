@@ -1,0 +1,29 @@
+double M_mu=0.105658; //GeV
+double M_e=511e-06; // GeV
+double dxde_muon (double *x, double *par);
+double range_muon(double *x, double *par);
+double dedx_muon(double *x, double *par);
+void draw_range() {
+  gStyle->SetOptLogy(1);
+  gStyle->SetOptLogx(1);
+  TF1 *f_r1 = new TF1("range_air", range_muon,0.2,1000,1);
+  f_r1-> SetParameter (0,0);
+  f r1-> SetLineColor(1):
+  f_rl->Draw();
+  TF1 *f_r2 = new TF1("range_rock",range_muon,0.2,1000,1);
+  f_r2->SetParameter(0,1);
+  f_r2->SetLineColor(2);
+  f_r2-> Draw("same");
+
+}
+double range_muon(double *x, double *par){
+  double E=x[0];
+  TF1 *fr = new TF1("fr_air",dxde_muon,0.2,1000,1);
+  if (par[0]==1) fr->SetParameter(0,1); //material code, default is 0 (air) and 1 for rock.
+  double R=fr->Integral(0.2, E); //range that E becomes lower than 0.2GeV return R;
+}
+double dxde_muon(double *x, double *par){
+  double dedx= dedx_muon(x, par);
+  double dxde=1/dedx;
+  return dxde;
+}
