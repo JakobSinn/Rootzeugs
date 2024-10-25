@@ -1,0 +1,43 @@
+double M_mu = 0.105658;
+double M_e = 511e-06;
+double dedx_muon(double *x, double *par);
+
+void draw_dedx() {
+  gStyle->SetOptLogy(1);
+  gStyle->SetOptLogx(1);
+
+  TF1 *f1 = new TF1("dedx_air", dedx_muon, M_mu, 1000, 1);
+  TF1 *f2 = new TF1("dedx_rock", dedx_muon, M_mu, 1000, 1);
+  f1->SetParameter(0, 0);
+  f1->SetLineColor(4);
+  f1->Draw();
+  f2->SetParameter(0,1);
+  f2->SetLineColor(2);
+  f2->Draw("same");
+  f1->GetYaxis()->SetTitle("Energy (GeV)");
+  f1->GetXaxis()->SetTitle("dE/dx (GeV/(g/cm2))");
+}
+
+double dedx_muon(double *x, double *par) {
+  double E=x[0];
+  int material_code=par[0];
+
+  double K=0.307e-03; //GeV/g/cm2
+  double b=85.7e-06;  //for air, GeV
+  double ZA=0.49919;   //for air
+  double delta=85.7e-06;  //for air and rock
+  if (material_code==1){ 
+    I=136.4e-09;     //for rock, GeV
+    ZA=0.50;           //for rock
+  }
+
+  double z=1;
+  double gamma=sqrt(1.+pow(M_mu/E,2));
+  double gamma2=sqrt(1-pow(M_mu/p,2));
+  double beta=sqrt(1-(1/gamma*gamma));
+  double bmax2=2*M_e*pow((E*E+M_mu*M_mu+M_e*M_e+2*M_e*E*2*M_e*E),2);
+  double dedx=K*z*z**ZA*(2*A/(beta2+1)*2/2+log(2)*E*bg*b*btmax(IH))
+                  -beta*beta-delta/2.); //GeV/cm2
+
+  return dedx;
+}

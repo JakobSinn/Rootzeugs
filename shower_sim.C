@@ -8,6 +8,7 @@ double Get_H_from_X(double X, double h0, double theta);
 void Make_CR_Shower(int id_primary, double e_rpimary, double theta, double phi);
 double Get_Decay_Length(double e, double mass, double t);
 void Pion_Decay(double px, double py, double pz, double x, double y, double z, double t);
+void Get_Muon_Decay_Position(double e, double px, double py, double pz, double x, double y, double z, double &decay_x, double &decay_y, double &decay_z);
 
 TRandom *r;
 double pi = TMath::Pi();
@@ -18,10 +19,11 @@ double M_mu = 0.105658;
 double M_neu = 0;
 double M_e = 511e-06;
 double Tau_pi = 2.6E-08;
+double Tau_mu = 2.2E-06;
 double C = 3e08;
 double e_threshold_had_int = 10;//GeV
 
-const int iterations = 2000;
+const int iterations = 1000;
 
 int pdg_p=2212;
 int pdg_pi=211;
@@ -111,6 +113,10 @@ void Make_CR_Shower(int id_primary, double e_primary, double theta, double phi){
 
 void shower_sim(){
   TNtuple *ntuple = new TNtuple("ntuple","ntuple","evt:id:flag:e:px:py:pz:x:y:z");
+
+  TH1F *hist_all = new TH1F("hist_all", "hist_all", 100, 0, 500);
+  TH1F *hist_decay = new TH1F("hist_decay", "hist_decay", 100, 0, 500);
+  TH1F *hist_arrival = new TH1F("hist_arrival", "hist_arrival", 100, 0, 500);
   
   r = new TRandom();
 
@@ -125,11 +131,16 @@ void shower_sim(){
     if (ievt % 100 == 0 && ievt > 0) printf("Simulating particle: %d\n", ievt);
     int id_primary = pdg_p;
     double e_primary = 1000;
-    double theta=0.2;
-    //double theta = 0;
+    
+    //double theta=0.2;
+    double theta = 0;
     double phi=r->Rndm()*pi*2;
 
     Make_CR_Shower(id_primary, e_primary, theta, phi);
+
+    int n_mu_all = 0;
+    int n_mu_decay = 0;
+    int n_mu_arrival = 0;
 	    
 
 	// if (id == pdg_pi && it->flag!=2){
@@ -175,6 +186,25 @@ void shower_sim(){
       double y =	   it->y;
       double z =	   it->z;
 
+      //Added for Muon
+
+      double det_z = 0;
+
+      if (pz > 0) continue;
+
+      if (id == 13 && flag==1){
+	double decay_x, decay_y, decay_z;
+
+	Get_Muon_Decay_Position(e,px,py,pz,x,y,z,decay_x, decay_y, decay_z);
+
+	if (decay_z>det_z) it->flag = 3;
+
+	n_mu_all++;
+
+	if (it->flag==3) n_mu_decay++;
+	if (it->flag==1) n_mu_arrival++;
+      }
+
       // if (flag==1){
       // 	TLorentzVector Muon(px, py, pz, e);
       // 	TParticle *Particle_Muon  = new TParticle();
@@ -191,16 +221,38 @@ void shower_sim(){
 
       // }
       ntuple->Fill(ievt, id, it->flag, e, px, py, pz, x, y, z);
+
+      hist_all -> Fill(n_mu_all);
+      hist_decay->Fill(n_mu_decay);
+      hist_arrival->Fill(n_mu_arrival);
   }
   }
-  ntuple -> SetLineColor(1);
-  ntuple -> Draw("z", "id==211");
-  ntuple -> SetLineColor(2);
-  ntuple -> Draw("z", "id==211 && flag==2","same");
-  ntuple -> SetLineColor(4);
-  ntuple -> Draw("z", "id==211 && flag==3","same");
-  ntuple -> SetLineColor(6);
-  ntuple -> Draw("z", "id==211 && flag==1","same");
+  // ntuple -> SetLineColor(1);
+  // ntuple -> Draw("z", "id==211");
+  // ntuple -> SetLineColor(2);
+  // ntuple -> Draw("z", "id==211 && flag==2","same");
+  // ntuple -> SetLineColor(4);
+  // ntuple -> Draw("z", "id==211 && flag==3","same");
+  // ntuple -> SetLineColor(6);
+  // ntuple -> Draw("z", "id==211 && flag==1","same");
+
+  hist_arrival->Draw();
+  hist_all->SetLineColor(2);
+  hist_all->Draw("same");
+  hist_decay->SetLineColor(6);
+  hist_decay->Draw("same");
+}
+
+void Get_Muon_Decay_Position(double e, double px, double py, double pz,
+                             double x, double y, double z,
+                             double &decay_x, double &decay_y, double &decay_z) {
+  double decay_time = r->Exp(Tau_mu);
+  double decay_length = Get_Decay_Length(e, M_mu, decay_time);
+
+  double p = sqrt(px*px + py*py + pz*pz);
+  decay_x = x + decay_length * px / p;
+  decay_y = y + decay_length * py / p;
+  decay_z = z + decay_length * pz / p;
 }
 
 void Ptcl_Register(int id, int flag, double px, double py, double pz, double x, double y, double z, double t){
